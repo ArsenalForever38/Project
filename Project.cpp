@@ -40,14 +40,29 @@ int main()
 
 
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(1.0, 1.0, 0.5, 1.0);
+        glClearColor(1.0, 0.6, 1.0, 1.0 );
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBegin(GL_TRIANGLES);
+        
+        glColor3f(1.0f, 1.0f, 0.7f);   // цвет для вершин 1 и 2
+        glVertex2f(-0.5f, -0.5f);      // левый нижний угол
 
-        glVertex2f(-0.3, 0.7); glColor3f(0.3, 1.0, 1.0);
-        glVertex2f(0.4, -0.3);
-        glVertex2f(-0.3, -0.3);
+        glColor3f(1.0f, 1.0f, 0.7f);
+        glVertex2f(0.5f, -0.5f);      // правый нижний угол
+
+        glColor3f(1.0f, 1.0f, 0.7f);
+        glVertex2f(0.5f, 0.5f);      // правый верхний угол
+
+        // Второй треугольник (верхний левый – нижний правый)
+        glColor3f(1.0f, 1.0f, 0.7f);
+        glVertex2f(0.5f, 0.5f);      // правый верхний угол
+
+        glColor3f(1.0f, 1.0f, 0.7f);
+        glVertex2f(-0.5f, -0.5f);      // левый нижний угол
+
+        glColor3f(1.0f, 1.0f, 0.7f);
+        glVertex2f(-0.5f, 0.5f);      // левый верхний угол
 
         glEnd();
         glfwSwapBuffers(window);
