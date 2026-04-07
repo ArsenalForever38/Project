@@ -45,24 +45,16 @@ int main()
 
         glBegin(GL_TRIANGLES);
         
-        glColor3f(1.0f, 1.0f, 0.7f);   // цвет для вершин 1 и 2
-        glVertex2f(-0.5f, -0.5f);      // левый нижний угол
+        glColor3f(1.0f, 1.0f, 0.7f);   
+        glVertex2f(-0.5f, -0.5f);      
+        glVertex2f(0.5f, -0.5f);      
+        glVertex2f(0.5f, 0.5f);      
 
-        glColor3f(1.0f, 1.0f, 0.7f);
-        glVertex2f(0.5f, -0.5f);      // правый нижний угол
-
-        glColor3f(1.0f, 1.0f, 0.7f);
-        glVertex2f(0.5f, 0.5f);      // правый верхний угол
-
-        // Второй треугольник (верхний левый – нижний правый)
-        glColor3f(1.0f, 1.0f, 0.7f);
-        glVertex2f(0.5f, 0.5f);      // правый верхний угол
-
-        glColor3f(1.0f, 1.0f, 0.7f);
-        glVertex2f(-0.5f, -0.5f);      // левый нижний угол
-
-        glColor3f(1.0f, 1.0f, 0.7f);
-        glVertex2f(-0.5f, 0.5f);      // левый верхний угол
+        // Второй треугольник 
+        
+        glVertex2f(0.5f, 0.5f);      
+        glVertex2f(-0.5f, -0.5f);      
+        glVertex2f(-0.5f, 0.5f);      
 
         glEnd();
         glfwSwapBuffers(window);
