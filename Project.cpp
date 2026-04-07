@@ -40,7 +40,7 @@ int main()
 
 
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(1.0, 1.0, 1.0, 1.0);
+        glClearColor(1.0, 1.0, 0.5, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBegin(GL_TRIANGLES);
