@@ -1,29 +1,42 @@
-﻿// compgraf.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
-//
-
-#define GLEW_DLL
+﻿#define GLEW_DLL
 #define GLFW_DLL
 
 #include <iostream>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <fstream>
+#include <sstream>
+#include <string>
 
-#include "GL/glew.h"
-#include "GLFW/glfw3.h"
+const char* vert_shader =
+"#version 410 core\n"
+"layout (location = 0) in vec3 vp;"
+"void main() {"
+"    gl_Position = vec4(vp, 1.0);"
+"}";
 
-
+const char* frag_shader =
+"#version 410 core\n"
+"out vec4 FragColor;\n"
+"uniform vec4 ourColor;\n"
+"void main() {\n"
+"    FragColor = ourColor;\n"
+"}\n";
 
 int main()
 {
+    
     if (!glfwInit()) {
         fprintf(stderr, "ERROR: could not start GLFW3.\n");
         return 1;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_FALSE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(512, 512, "Mainwindow", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1024, 1024, "Mainwindow", NULL, NULL);
 
     if (!window) {
         glfwTerminate();
@@ -38,30 +51,81 @@ int main()
         return 1;
     }
 
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vert_shader, NULL);
+    glCompileShader(vertex_shader);
 
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &frag_shader, NULL);
+    glCompileShader(fragment_shader);
+
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    
+    float points[] = {
+      -0.5f, -0.5f, 0.0f,   // вершина 0 (левый нижний)
+       0.5f, -0.5f, 0.0f,   // вершина 1 (правый нижний)
+       0.5f,  0.5f, 0.0f,   // вершина 2 (правый верхний)
+      -0.5f,  0.5f, 0.0f    // вершина 3 (левый верхний)
+    };
+
+    
+    unsigned int indices[] = {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+    GLuint vbo, vao, ebo;
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    glGenVertexArrays(1, &vao);
+
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Основной цикл
     while (!glfwWindowShouldClose(window)) {
-        glClearColor(1.0, 0.6, 1.0, 1.0 );
+       
+        glClearColor(1.0f, 0.6f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glBegin(GL_TRIANGLES);
-        
-        glColor3f(1.0f, 1.0f, 0.7f);   
-        glVertex2f(-0.5f, -0.5f);      
-        glVertex2f(0.5f, -0.5f);      
-        glVertex2f(0.5f, 0.5f);      
+        glUseProgram(shader_program);
 
-        // Второй треугольник 
-        
-        glVertex2f(0.5f, 0.5f);      
-        glVertex2f(-0.5f, -0.5f);      
-        glVertex2f(-0.5f, 0.5f);      
+        // Изменение цвета от времени
+        float timeValue = glfwGetTime();
+        float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+        GLint vertexColorLocation = glGetUniformLocation(shader_program, "ourColor");
+        glUniform4f(vertexColorLocation, 0.6f, greenValue, 0.3f, 1.0f);
 
-        glEnd();
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); // 6 индексов
+
         glfwSwapBuffers(window);
-
         glfwPollEvents();
     }
-    glfwTerminate();
 
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteProgram(shader_program);
+
+    glfwTerminate();
     return 0;
 }
