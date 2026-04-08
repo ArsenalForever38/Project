@@ -22,39 +22,36 @@
 
 using namespace std;
 
-// ---------- Встроенные шейдеры ----------
-const char* vert_shader =
-"#version 410 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"uniform mat4 model;\n"
-"uniform mat4 view;\n"
-"uniform mat4 projection;\n"
-"void main() {\n"
-"    gl_Position = projection * view * model * vec4(aPos, 1.0);\n"
-"}\n";
-
-const char* frag_shader =
-"#version 410 core\n"
-"out vec4 FragColor;\n"
-"uniform vec4 ourColor;\n"
-"void main() {\n"
-"    FragColor = ourColor;\n"
-"}\n";
-// ----------------------------------------
+// Функция для чтения шейдера из файла
+string loadShaderFromFile(const string& filepath) {
+    ifstream file(filepath);
+    if (!file.is_open()) {
+        cerr << "ERROR: Failed to open shader file: " << filepath << endl;
+        return "";
+    }
+    stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
 
 class Shader {
 public:
     unsigned int ID;
 
-    // Конструктор теперь принимает строки с кодом шейдеров
-    Shader(const char* vertexCode, const char* fragmentCode) {
+    Shader(const char* vertexPath, const char* fragmentPath) {
+        // Чтение кода шейдеров из файлов
+        string vertexCode = loadShaderFromFile(vertexPath);
+        string fragmentCode = loadShaderFromFile(fragmentPath);
+        const char* vShaderCode = vertexCode.c_str();
+        const char* fShaderCode = fragmentCode.c_str();
+
         unsigned int vertex = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex, 1, &vertexCode, NULL);
+        glShaderSource(vertex, 1, &vShaderCode, NULL);
         glCompileShader(vertex);
         checkCompileErrors(vertex, "VERTEX");
 
         unsigned int fragment = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment, 1, &fragmentCode, NULL);
+        glShaderSource(fragment, 1, &fShaderCode, NULL);
         glCompileShader(fragment);
         checkCompileErrors(fragment, "FRAGMENT");
 
@@ -74,8 +71,16 @@ public:
         glUniform3fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(value));
     }
 
-    void setVec4(const string& name, const glm::vec4& value) const {
-        glUniform4fv(glGetUniformLocation(ID, name.c_str()), 1, glm::value_ptr(value));
+    void setVec3(const string& name, float x, float y, float z) const {
+        glUniform3f(glGetUniformLocation(ID, name.c_str()), x, y, z);
+    }
+
+    void setFloat(const string& name, float value) const {
+        glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
+    }
+
+    void setMat3(const string& name, const glm::mat3& mat) const {
+        glUniformMatrix3fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
     }
 
     void setMat4(const string& name, const glm::mat4& mat) const {
@@ -141,9 +146,11 @@ private:
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
+        // Позиции
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 
+        // Нормали
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, Normal));
 
@@ -195,18 +202,9 @@ private:
 
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex vertex;
-            glm::vec3 vector;
-            vector.x = mesh->mVertices[i].x;
-            vector.y = mesh->mVertices[i].y;
-            vector.z = mesh->mVertices[i].z;
-            vertex.Position = vector;
-
-            if (mesh->HasNormals()) {
-                vector.x = mesh->mNormals[i].x;
-                vector.y = mesh->mNormals[i].y;
-                vector.z = mesh->mNormals[i].z;
-                vertex.Normal = vector;
-            }
+            vertex.Position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+            if (mesh->HasNormals())
+                vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
             vertices.push_back(vertex);
         }
 
@@ -220,6 +218,7 @@ private:
     }
 };
 
+// Параметры камеры
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 5.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -234,6 +233,8 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 int windowWidth = 800;
 int windowHeight = 600;
+
+glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     float xpos = static_cast<float>(xposIn);
@@ -257,7 +258,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     yaw += xoffset;
     pitch += yoffset;
 
-    if (pitch > 89.0f) pitch = 89.0f;
+    if (pitch > 89.0f)  pitch = 89.0f;
     if (pitch < -89.0f) pitch = -89.0f;
 
     glm::vec3 front;
@@ -298,7 +299,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Lab5 - Model", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Lab6 - Lighting", NULL, NULL);
     if (!window) {
         cerr << "Failed to create GLFW window" << endl;
         glfwTerminate();
@@ -317,12 +318,13 @@ int main() {
     }
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE); // Отбраковка невидимых граней (может улучшить освещение)
 
-    // Создаём шейдер из встроенных строк
-    Shader ourShader(vert_shader, frag_shader);
+    // Загружаем шейдеры из файлов (лежат в корне проекта)
+    Shader lightingShader("vertex_shader.glsl", "fragment_shader.glsl");
 
-    // Новый путь к модели
-    Model ourModel("C:\\Users\\Ivan\\source\\repos\\Project\\model\\2000VH.obj");
+    // Модель из корня проекта
+    Model ourModel("./model/2000VH.obj");
     cout << "Model loaded. Meshes: " << ourModel.meshes.size() << endl;
 
     while (!glfwWindowShouldClose(window)) {
@@ -335,19 +337,33 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        ourShader.use();
+        lightingShader.use();
 
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::scale(model, glm::vec3(0.5f));
 
-        ourShader.setMat4("projection", projection);
-        ourShader.setMat4("view", view);
-        ourShader.setMat4("model", model);
+        lightingShader.setMat4("projection", projection); // Исправлено имя uniform
+        lightingShader.setMat4("view", view);
+        lightingShader.setMat4("model", model);
 
-        // Во фрагментном шейдере используется uniform ourColor типа vec4
-        ourShader.setVec4("ourColor", glm::vec4(1.0f, 1.0f, 0.7f, 1.0f));
+        glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+        lightingShader.setMat3("normalMatrix", normalMatrix);
+
+        lightingShader.setVec3("viewPos", cameraPos);
+        lightingShader.setVec3("lightPos", lightPos);
+
+        // Параметры света
+        lightingShader.setVec3("lightAmbient", 0.2f, 0.2f, 0.2f);
+        lightingShader.setVec3("lightDiffuse", 0.8f, 0.8f, 0.8f);
+        lightingShader.setVec3("lightSpecular", 1.0f, 1.0f, 1.0f);
+
+        // Материал (пластик)
+        lightingShader.setVec3("materialAmbient", 0.0f, 0.0f, 0.0f);
+        lightingShader.setVec3("materialDiffuse", 0.5f, 0.5f, 0.5f);
+        lightingShader.setVec3("materialSpecular", 0.5f, 0.5f, 0.5f);
+        lightingShader.setFloat("materialShininess", 32.0f);
 
         ourModel.Draw();
 
