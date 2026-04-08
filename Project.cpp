@@ -167,9 +167,26 @@ public:
         loadModel(path);
     }
 
-    void Draw() {
-        for (unsigned int i = 0; i < meshes.size(); i++)
+    void Draw(Shader& shader, glm::mat4* modelMatrices)
+    {
+        for (unsigned int i = 0; i < meshes.size(); i++) {
+            unsigned int modelLoc = glGetUniformLocation(shader.ID, "model");
+
+            if (i == 0) {
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+            }
+            else if (i == 1) {
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrices[0]));
+            }
+            else if (i == 2) {
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrices[1]));
+            }
+            else {
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrices[2]));
+            }
+
             meshes[i].Draw();
+        }
     }
 
 private:
@@ -234,6 +251,11 @@ float lastFrame = 0.0f;
 int windowWidth = 800;
 int windowHeight = 600;
 
+float rtk_position = 0.0f;       
+float module_position = 0.0f;
+float table_position = 0.0f; 
+
+
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
@@ -278,7 +300,7 @@ void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    float cameraSpeed = 2.5f * deltaTime;
+    float cameraSpeed = 5.0f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -287,6 +309,37 @@ void processInput(GLFWwindow* window) {
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+
+    float moveSpeed = deltaTime * 2.0f;
+
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        module_position += moveSpeed;
+        if (module_position > 0.7f) module_position = 0.7f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        module_position -= moveSpeed;
+        if (module_position < -0.7f) module_position = -0.7f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        rtk_position += moveSpeed;
+        if (rtk_position > 0.0f) rtk_position = 0.0f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        rtk_position -= moveSpeed;
+        if (rtk_position < -1.8f) rtk_position = -1.8f;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+        table_position += moveSpeed;
+        if (table_position > 1.0f) table_position = 1.0f;
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+        table_position -= moveSpeed;
+        if (table_position < -1.0f) table_position = -1.0f;
+    }
+
 }
 
 int main() {
@@ -299,7 +352,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Lab6 - Lighting", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Lab7 - Move", NULL, NULL);
     if (!window) {
         cerr << "Failed to create GLFW window" << endl;
         glfwTerminate();
@@ -318,7 +371,7 @@ int main() {
     }
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE); // Отбраковка невидимых граней (может улучшить освещение)
+    glEnable(GL_CULL_FACE); 
 
     // Загружаем шейдеры из файлов (лежат в корне проекта)
     Shader lightingShader("vertex_shader.glsl", "fragment_shader.glsl");
@@ -334,7 +387,7 @@ int main() {
 
         processInput(window);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         lightingShader.use();
@@ -365,8 +418,18 @@ int main() {
         lightingShader.setVec3("materialSpecular", 0.5f, 0.5f, 0.5f);
         lightingShader.setFloat("materialShininess", 32.0f);
 
-        ourModel.Draw();
+        glm::mat4 modelMatrices[3];
 
+        modelMatrices[0] = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, rtk_position, 0.0f));
+
+        modelMatrices[1] = glm::translate(glm::mat4(1.0f), glm::vec3(module_position, 0.0f, 0.0f));
+        modelMatrices[1] = glm::translate(modelMatrices[1], glm::vec3(0.0f, rtk_position, 0.0f));
+
+        modelMatrices[2] = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, table_position));
+
+        ourModel.Draw(lightingShader, modelMatrices);
+
+            
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
