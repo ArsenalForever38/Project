@@ -23,7 +23,7 @@ int main()
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(512, 512, "Mainwindow", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1024, 1024, "Lab1-Mainwindow", NULL, NULL);
 
     if (!window) {
         glfwTerminate();
