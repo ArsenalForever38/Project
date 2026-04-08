@@ -322,7 +322,7 @@ int main() {
     Shader ourShader(vert_shader, frag_shader);
 
     // Новый путь к модели
-    Model ourModel("C:\\Users\\Ivan\\source\\repos\\Project\\model\\2000VH.obj");
+    Model ourModel("./model/2000VH.obj");
     cout << "Model loaded. Meshes: " << ourModel.meshes.size() << endl;
 
     while (!glfwWindowShouldClose(window)) {
